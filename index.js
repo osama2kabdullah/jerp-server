@@ -71,6 +71,25 @@ async function run() {
       const token = jwt.sign(email, process.env.JOT_SECRET_KEY);
       res.send({ result, token });
     });
+    
+    //get user base orders
+    app.get('/myorders', verifyToken, async (req, res)=>{
+      const email = req.decoded;
+      const filter = { Useremail: email };
+      const result = await ordersCollection.findOne(filter);
+      res.send(result);
+    })
+    
+    //update users order
+    app.post('/cancelOrder', verifyToken, async (req, res)=>{
+      const email = req.decoded;
+      const orderlist = req.body.rest;
+      const filter = { Useremail: email };
+      const update = { $set : { orderlist }};
+      const option = {};
+      const updateResult = await ordersCollection.updateOne(filter, update, option);
+      res.send({updateResult, success: true});
+    })
 
     // store orders in db
     app.post("/makeOrder", verifyToken, async (req, res) => {
