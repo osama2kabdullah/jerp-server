@@ -43,6 +43,7 @@ async function run() {
     const productsCollection = client.db("jerp").collection("products");
     const usersCollection = client.db("jerp").collection("users");
     const ordersCollection = client.db("jerp").collection("orders");
+    const reviewCollection = client.db("jerp").collection("reviews");
 
     //load all data
     app.get("/products", async (req, res) => {
@@ -77,11 +78,20 @@ async function run() {
       const email = req.decoded;
       const filter = { Useremail: email };
       const result = await ordersCollection.findOne(filter);
+      res.send({result});
+    })
+    
+    //add a review
+    app.post('/addreview', verifyToken, async (req, res)=>{
+      const email = req.decoded;
+      const user = await usersCollection.findOne({email});
+      const doc = {rating: req.body.rating, reviwMessage: req.body.reviwMessage, user};
+      const result = await reviewCollection.insertOne(doc);
       res.send(result);
     })
     
     //update users order
-    app.post('/cancelOrder', verifyToken, async (req, res)=>{
+    app.patch('/cancelOrder', verifyToken, async (req, res)=>{
       const email = req.decoded;
       const orderlist = req.body.rest;
       const filter = { Useremail: email };
