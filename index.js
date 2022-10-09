@@ -1,7 +1,7 @@
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
 require("dotenv").config();
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
@@ -10,53 +10,103 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-
 const uri = `mongodb+srv://${process.env.DB_USER_NAME}:${process.env.DB_PASS_KEY}@cluster0.qf4bw47.mongodb.net/?retryWrites=true&w=majority`;
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+const client = new MongoClient(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverApi: ServerApiVersion.v1,
+});
 
-async function run () {
-    try{
-        client.connect();
-        const productsCollection = client.db("jerp").collection("products");
-        const usersCollection = client.db("jerp").collection("users");
-        
-        //load all data
-        app.get('/products', async (req, res)=>{
-            const result = await productsCollection.find({}).toArray();
-            res.send(result);
-        });
-        
-        //load a single data
-        app.get('/productdetail/:id', async (req, res)=>{
-            const id = req.params.id;
-            console.log(id);
-            const filter = {_id: ObjectId(id)};
-            const result = await productsCollection.findOne(filter);
-            res.send(result);
-        });
-        
-        //add new user and uodate user
-        app.put('/updateoradduser/:email', async (req, res)=>{
-            const email = req.params.email;
-            const filter = {email};
-            const doc = req.body;
-            const options = { upsert: true };
-            const update = { $set: { doc } };
-            const result = await usersCollection.updateOne(filter, update, options );
-            // issue a access jot token
-            const token = jwt.sign(email, process.env.JOT_SECRET_KEY);
-            res.send({result, token});
-        })
-        
+//verifyToken
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res
+      .status(401)
+      .send({ message: "unauthorize access", success: false });
+  }
+  const tokenCode = token.split(" ")[1];
+  jwt.verify(tokenCode, process.env.JOT_SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res
+        .status(403)
+        .send({ message: "forbidden access", success: false });
     }
-    finally{
-        // client.close();
-    }
+    req.decoded = decoded;
+    next();
+  });
 };
+
+async function run() {
+  try {
+    client.connect();
+    const productsCollection = client.db("jerp").collection("products");
+    const usersCollection = client.db("jerp").collection("users");
+    const ordersCollection = client.db("jerp").collection("orders");
+
+    //load all data
+    app.get("/products", async (req, res) => {
+      const result = await productsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    //load a single data
+    app.get("/productdetail/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const filter = { _id: ObjectId(id) };
+      const result = await productsCollection.findOne(filter);
+      res.send(result);
+    });
+
+    //add new user and uodate user
+    app.put("/updateoradduser/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { email };
+      const doc = req.body;
+      const options = { upsert: true };
+      const update = { $set: { doc } };
+      const result = await usersCollection.updateOne(filter, update, options);
+      // issue a access jot token
+      const token = jwt.sign(email, process.env.JOT_SECRET_KEY);
+      res.send({ result, token });
+    });
+
+    // store orders in db
+    app.post("/makeOrder", verifyToken, async (req, res) => {
+      const email = req.decoded;
+      const doc = req.body;
+      const filter = { Useremail: email };
+      const userData = {Useremail:email, orderlist:[doc]};
+      
+      const isPresent = await ordersCollection.findOne(filter);
+      if(isPresent){
+        
+        const match = isPresent.orderlist.some(element=>element.productName === doc.productName);
+        if(match){
+            
+        }else {
+            isPresent.orderlist.push(doc);
+            const update = { $set : { orderlist : isPresent.orderlist }};
+        const option = {};
+        const updateResult = await ordersCollection.updateOne(filter, update, option);
+        res.send({updateResult});
+        }
+      } else {
+          const insertResult = await ordersCollection.insertOne(userData);
+          res.send({insertResult});
+      }
+    });
+    
+    
+  } finally {
+    // client.close();
+  }
+}
 
 run().catch(console.dir);
 
-app.get('/', (req, res)=>{
-    res.send('hello world')
+app.get("/", (req, res) => {
+  res.send("hello world");
 });
-app.listen(port, ()=>console.log('listening to port', port));
+app.listen(port, () => console.log("listening to port", port));
