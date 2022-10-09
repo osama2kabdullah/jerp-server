@@ -84,17 +84,17 @@ async function run() {
         
         const match = isPresent.orderlist.some(element=>element.productName === doc.productName);
         if(match){
-            
+            res.send({message: 'already added in cart', success: false});
         }else {
-            isPresent.orderlist.push(doc);
-            const update = { $set : { orderlist : isPresent.orderlist }};
+        isPresent.orderlist.push(doc);
+        const update = { $set : { orderlist : isPresent.orderlist }};
         const option = {};
         const updateResult = await ordersCollection.updateOne(filter, update, option);
-        res.send({updateResult});
+        res.send({updateResult, success: true});
         }
       } else {
           const insertResult = await ordersCollection.insertOne(userData);
-          res.send({insertResult});
+          res.send({insertResult, success: true});
       }
     });
     
