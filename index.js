@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require("dotenv").config();
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
@@ -17,6 +18,7 @@ async function run () {
     try{
         client.connect();
         const productsCollection = client.db("jerp").collection("products");
+        const usersCollection = client.db("jerp").collection("users");
         
         //load all data
         app.get('/products', async (req, res)=>{
@@ -31,7 +33,21 @@ async function run () {
             const filter = {_id: ObjectId(id)};
             const result = await productsCollection.findOne(filter);
             res.send(result);
+        });
+        
+        //add new user and uodate user
+        app.put('/updateoradduser/:email', async (req, res)=>{
+            const email = req.params.email;
+            const filter = {email};
+            const doc = req.body;
+            const options = { upsert: true };
+            const update = { $set: { doc } };
+            const result = await usersCollection.updateOne(filter, update, options );
+            // issue a access jot token
+            const token = jwt.sign(email, process.env.JOT_SECRET_KEY);
+            res.send({result, token});
         })
+        
     }
     finally{
         // client.close();
