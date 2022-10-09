@@ -88,6 +88,11 @@ async function run() {
       const doc = {rating: req.body.rating, reviwMessage: req.body.reviwMessage, user};
       const result = await reviewCollection.insertOne(doc);
       res.send(result);
+    });
+    
+    app.get('/reviews', async (req, res)=>{
+      const result = await reviewCollection.find({}).toArray();
+      res.send({result});
     })
     
     //update users order
