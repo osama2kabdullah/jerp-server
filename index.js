@@ -50,6 +50,22 @@ async function run() {
       const result = await productsCollection.find({}).toArray();
       res.send(result);
     });
+    
+    //load a perticular product
+    app.get('/product/:id', async (req, res)=>{
+      const result = await productsCollection.findOne({_id: ObjectId(req.params.id)});
+      res.send(result);
+    });
+    
+    //update perticular product
+    app.put('/updateproduct/:id', async (req, res)=>{
+      const doc = req.body;
+      const filter = {_id: ObjectId(req.params.id)};
+      const update = { $set: doc };
+      const options = { upsert: true };
+      const result = await productsCollection.updateOne(filter, update, options);
+      res.send(result);
+    })
 
     //load a single data
     app.get("/productdetail/:id", async (req, res) => {
