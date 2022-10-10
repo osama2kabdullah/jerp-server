@@ -45,7 +45,7 @@ async function run() {
     const ordersCollection = client.db("jerp").collection("orders");
     const reviewCollection = client.db("jerp").collection("reviews");
 
-    //load all data
+    //load all products
     app.get("/products", async (req, res) => {
       const result = await productsCollection.find({}).toArray();
       res.send(result);
@@ -64,6 +64,13 @@ async function run() {
       const update = { $set: doc };
       const options = { upsert: true };
       const result = await productsCollection.updateOne(filter, update, options);
+      res.send(result);
+    });
+    
+    //delete perticular product
+    app.delete('/delete/:id', async (req, res)=>{
+      const filter = {_id: ObjectId(req.params.id)};
+      const result = await productsCollection.deleteOne(filter);
       res.send(result);
     })
 
