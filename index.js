@@ -68,71 +68,107 @@ async function run() {
       const options = { upsert: true };
       const update = { $set: { doc } };
       const result = await usersCollection.updateOne(filter, update, options);
-      // issue a access jot token
-      const token = jwt.sign(email, process.env.JOT_SECRET_KEY);
-      res.send({ result, token });
+      res.send({ result });
     });
     
+    //find user
+    app.get('/finduser', verifyToken, async (req, res)=>{
+      const email = req.decoded;
+      const filter = { email };
+      const user = await usersCollection.findOne(filter);
+      res.send(user);
+    })
+    
+    //user profile update
+    app.put('/updateprofile', verifyToken, async (req, res)=>{
+      const email = req.decoded;
+      const filter = { email };
+      const doc = req.body;
+      const update = { $set: { doc } };
+      const options = { upsert: true };
+      const result = await usersCollection.updateOne(filter, update, options);
+      res.send(result);
+    })
+
+    //issue a authirization token
+    app.get("/gettoken/:email", (req, res) => {
+      const email = req.params.email;
+      const token = jwt.sign(email, process.env.JOT_SECRET_KEY);
+      res.send({ token });
+    });
+
     //get user base orders
-    app.get('/myorders', verifyToken, async (req, res)=>{
+    app.get("/myorders", verifyToken, async (req, res) => {
       const email = req.decoded;
       const filter = { Useremail: email };
       const result = await ordersCollection.findOne(filter);
-      res.send({result});
-    })
-    
+      res.send({ result });
+    });
+
     //add a review
-    app.post('/addreview', verifyToken, async (req, res)=>{
+    app.post("/addreview", verifyToken, async (req, res) => {
       const email = req.decoded;
-      const user = await usersCollection.findOne({email});
-      const doc = {rating: req.body.rating, reviwMessage: req.body.reviwMessage, user};
+      const user = await usersCollection.findOne({ email });
+      const doc = {
+        rating: req.body.rating,
+        reviwMessage: req.body.reviwMessage,
+        user,
+      };
       const result = await reviewCollection.insertOne(doc);
       res.send(result);
     });
-    
-    app.get('/reviews', async (req, res)=>{
+
+    //get all reviews
+    app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find({}).toArray();
-      res.send({result});
-    })
-    
+      res.send({ result });
+    });
+
     //update users order
-    app.patch('/cancelOrder', verifyToken, async (req, res)=>{
+    app.patch("/cancelOrder", verifyToken, async (req, res) => {
       const email = req.decoded;
       const orderlist = req.body.rest;
       const filter = { Useremail: email };
-      const update = { $set : { orderlist }};
+      const update = { $set: { orderlist } };
       const option = {};
-      const updateResult = await ordersCollection.updateOne(filter, update, option);
-      res.send({updateResult, success: true});
-    })
+      const updateResult = await ordersCollection.updateOne(
+        filter,
+        update,
+        option
+      );
+      res.send({ updateResult, success: true });
+    });
 
     // store orders in db
     app.post("/makeOrder", verifyToken, async (req, res) => {
       const email = req.decoded;
       const doc = req.body;
       const filter = { Useremail: email };
-      const userData = {Useremail:email, orderlist:[doc]};
-      
+      const userData = { Useremail: email, orderlist: [doc] };
+
       const isPresent = await ordersCollection.findOne(filter);
-      if(isPresent){
-        
-        const match = isPresent.orderlist.some(element=>element.productName === doc.productName);
-        if(match){
-            res.send({message: 'already added in cart', success: false});
-        }else {
-        isPresent.orderlist.push(doc);
-        const update = { $set : { orderlist : isPresent.orderlist }};
-        const option = {};
-        const updateResult = await ordersCollection.updateOne(filter, update, option);
-        res.send({updateResult, success: true});
+      if (isPresent) {
+        const match = isPresent.orderlist.some(
+          (element) => element.productName === doc.productName
+        );
+        if (match) {
+          res.send({ message: "already added in cart", success: false });
+        } else {
+          isPresent.orderlist.push(doc);
+          const update = { $set: { orderlist: isPresent.orderlist } };
+          const option = {};
+          const updateResult = await ordersCollection.updateOne(
+            filter,
+            update,
+            option
+          );
+          res.send({ updateResult, success: true });
         }
       } else {
-          const insertResult = await ordersCollection.insertOne(userData);
-          res.send({insertResult, success: true});
+        const insertResult = await ordersCollection.insertOne(userData);
+        res.send({ insertResult, success: true });
       }
     });
-    
-    
   } finally {
     // client.close();
   }
