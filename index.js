@@ -67,6 +67,13 @@ async function run() {
       res.send(result);
     });
     
+    //insert a product
+    app.post('/addnewproduct', async (req, res)=>{
+      const doc = req.body;
+      const result = await productsCollection.insertOne(doc);
+      res.send(result);
+    })
+    
     //delete perticular product
     app.delete('/delete/:id', async (req, res)=>{
       const filter = {_id: ObjectId(req.params.id)};
