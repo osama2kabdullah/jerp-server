@@ -81,7 +81,7 @@ async function run() {
       res.send(result);
     })
 
-    //load a single data
+    //load a single prodct
     app.get("/productdetail/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id);
@@ -101,11 +101,37 @@ async function run() {
       res.send({ result });
     });
     
-    //find user
+    //get all users
+    app.get('/allusers', async (req, res)=>{
+      const result = await usersCollection.find({}).toArray();
+      res.send(result);
+    });
+    
+    //make admin role an user
+    app.put('/takeactionforuser/:id', async (req, res)=> {
+      const filter = {_id: ObjectId(req.params.id)};
+      const user = await usersCollection.findOne(filter);
+      const key = Object.keys(req.body);
+      // const value = Object.value(req.body); 
+      user.doc[key] =  req.body.role;
+      const update = { $set: { doc: user.doc } };
+      const options = { upsert: true };
+      const result = await usersCollection.updateOne(filter, update, options);
+      res.send(result);
+    })
+    
+    //find user by token
     app.get('/finduser', verifyToken, async (req, res)=>{
       const email = req.decoded;
       const filter = { email };
       const user = await usersCollection.findOne(filter);
+      res.send(user);
+    });
+    
+    //find user by email
+    app.get('/finduser/:email', async (req, res)=>{
+      const email = req.params.email;
+      const user = await usersCollection.findOne({email})
       res.send(user);
     })
     
@@ -168,6 +194,12 @@ async function run() {
       );
       res.send({ updateResult, success: true });
     });
+    
+    //get all orders
+    app.get('/allorders', async (req, res)=>{
+      const result = await ordersCollection.find({}).toArray();
+      res.send(result);
+    })
 
     // store orders in db
     app.post("/makeOrder", verifyToken, async (req, res) => {
