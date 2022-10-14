@@ -90,6 +90,15 @@ async function run() {
       );
       res.send(result);
     });
+    
+    //decrease product quantity
+    app.put('/decreaseproductquantity/:id', verifyToken, async (req, res)=> {
+      const filter = {_id: ObjectId(req.params.id)};
+      const options = {upsert: true};
+      const update = {$set : {availableQty: req.body.newProductAvailable}};
+      const result = await productsCollection.updateOne(filter, update, options);
+      res.send(result);
+    })
 
     //insert a product
     app.post("/addnewproduct", verifyToken, verifyAdmin, async (req, res) => {
@@ -108,7 +117,6 @@ async function run() {
     //load a single prodct
     app.get("/productdetail/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
       const filter = { _id: ObjectId(id) };
       const result = await productsCollection.findOne(filter);
       res.send(result);
