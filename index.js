@@ -45,41 +45,65 @@ async function run() {
     const ordersCollection = client.db("jerp").collection("orders");
     const reviewCollection = client.db("jerp").collection("reviews");
 
+    //find a user
+    const findUser = async (email) => {
+      const user = await usersCollection.findOne({email});
+      return user;
+    }
+    
+    //verify admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded;
+      const user = await findUser(email);
+      if(user?.doc?.role === 'admin' ){
+        return next();
+      }
+      return res
+      .status(401)
+      .send({ message: "unauthorize access from admin verifaction", success: false });
+    };
+
     //load all products
     app.get("/products", async (req, res) => {
       const result = await productsCollection.find({}).toArray();
       res.send(result);
     });
-    
+
     //load a perticular product
-    app.get('/product/:id', async (req, res)=>{
-      const result = await productsCollection.findOne({_id: ObjectId(req.params.id)});
+    app.get("/product/:id", async (req, res) => {
+      const result = await productsCollection.findOne({
+        _id: ObjectId(req.params.id),
+      });
       res.send(result);
     });
-    
+
     //update perticular product
-    app.put('/updateproduct/:id', async (req, res)=>{
+    app.put("/updateproduct/:id", verifyToken, verifyAdmin, async (req, res) => {
       const doc = req.body;
-      const filter = {_id: ObjectId(req.params.id)};
+      const filter = { _id: ObjectId(req.params.id) };
       const update = { $set: doc };
       const options = { upsert: true };
-      const result = await productsCollection.updateOne(filter, update, options);
+      const result = await productsCollection.updateOne(
+        filter,
+        update,
+        options
+      );
       res.send(result);
     });
-    
+
     //insert a product
-    app.post('/addnewproduct', async (req, res)=>{
+    app.post("/addnewproduct", verifyToken, verifyAdmin, async (req, res) => {
       const doc = req.body;
       const result = await productsCollection.insertOne(doc);
       res.send(result);
-    })
-    
+    });
+
     //delete perticular product
-    app.delete('/delete/:id', async (req, res)=>{
-      const filter = {_id: ObjectId(req.params.id)};
+    app.delete("/delete/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const filter = { _id: ObjectId(req.params.id) };
       const result = await productsCollection.deleteOne(filter);
       res.send(result);
-    })
+    });
 
     //load a single prodct
     app.get("/productdetail/:id", async (req, res) => {
@@ -100,43 +124,40 @@ async function run() {
       const result = await usersCollection.updateOne(filter, update, options);
       res.send({ result });
     });
-    
+
     //get all users
-    app.get('/allusers', async (req, res)=>{
+    app.get("/allusers", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find({}).toArray();
       res.send(result);
     });
-    
+
     //make admin role an user
-    app.put('/takeactionforuser/:id', async (req, res)=> {
-      const filter = {_id: ObjectId(req.params.id)};
+    app.put("/takeactionforuser/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const filter = { _id: ObjectId(req.params.id) };
       const user = await usersCollection.findOne(filter);
       const key = Object.keys(req.body);
-      // const value = Object.value(req.body); 
-      user.doc[key] =  req.body.role;
+      // const value = Object.value(req.body);
+      user.doc[key] = req.body.role;
       const update = { $set: { doc: user.doc } };
       const options = { upsert: true };
       const result = await usersCollection.updateOne(filter, update, options);
       res.send(result);
-    })
-    
+    });
+
     //find user by token
-    app.get('/finduser', verifyToken, async (req, res)=>{
-      const email = req.decoded;
-      const filter = { email };
-      const user = await usersCollection.findOne(filter);
+    app.get("/finduser", verifyToken, async (req, res) => {
+      const user = await findUser(req.decoded);
       res.send(user);
     });
-    
+
     //find user by email
-    app.get('/finduser/:email', async (req, res)=>{
-      const email = req.params.email;
-      const user = await usersCollection.findOne({email})
+    app.get("/finduser/:email", async (req, res) => {
+      const user = await findUser(req.params.email);
       res.send(user);
-    })
-    
+    });
+
     //user profile update
-    app.put('/updateprofile', verifyToken, async (req, res)=>{
+    app.put("/updateprofile", verifyToken, async (req, res) => {
       const email = req.decoded;
       const filter = { email };
       const doc = req.body;
@@ -144,7 +165,7 @@ async function run() {
       const options = { upsert: true };
       const result = await usersCollection.updateOne(filter, update, options);
       res.send(result);
-    })
+    });
 
     //issue a authirization token
     app.get("/gettoken/:email", (req, res) => {
@@ -163,8 +184,7 @@ async function run() {
 
     //add a review
     app.post("/addreview", verifyToken, async (req, res) => {
-      const email = req.decoded;
-      const user = await usersCollection.findOne({ email });
+      const user = await findUser(req.decoded);
       const doc = {
         rating: req.body.rating,
         reviwMessage: req.body.reviwMessage,
@@ -194,12 +214,12 @@ async function run() {
       );
       res.send({ updateResult, success: true });
     });
-    
+
     //get all orders
-    app.get('/allorders', async (req, res)=>{
+    app.get("/allorders", verifyToken, verifyAdmin, async (req, res) => {
       const result = await ordersCollection.find({}).toArray();
       res.send(result);
-    })
+    });
 
     // store orders in db
     app.post("/makeOrder", verifyToken, async (req, res) => {
