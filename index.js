@@ -138,6 +138,12 @@ async function run() {
       const result = await usersCollection.find({}).toArray();
       res.send(result);
     });
+    
+    //get all quantity
+    app.get("/usersquantity", verifyToken, async (req, res) => {
+      const usersCount = await usersCollection.countDocuments();
+      res.send({usersCount});
+    });
 
     //make admin role an user
     app.put("/takeactionforuser/:id", verifyToken, verifyAdmin, async (req, res) => {
